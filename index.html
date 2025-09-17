@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sorry Game for My Girlfriend</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      height: 100%; margin: 0; padding: 0;
+    }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #ffe8f0 0%, #e8f7ff 100%);
+      overflow: hidden;
+    }
+    #bg-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+    #game-container {
+      position: relative;
+      z-index: 2;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 6px 30px 0 rgba(255,137,166,0.13);
+      border-radius: 18px;
+      padding: 38px 24px;
+      max-width: 420px;
+      width: 98vw;
+      margin: 60px auto 0 auto;
+      text-align: center;
+      min-height: 520px;
+      border: 2px solid #ffe1ea;
+    }
+    .title {
+      font-size: 1.35em;
+      font-weight: bold;
+      margin-bottom: 0.7em;
+      color: #ff89a6;
+      line-height: 1.2;
+      text-shadow: 0 2px 8px #ffe1ea;
+      letter-spacing: 0.01em;
+    }
+    .button, .option-btn {
+      background: linear-gradient(90deg,#ff89a6 0%, #ffde8a 100%);
+      color: #333;
+      border: none;
+      padding: 13px 30px;
+      border-radius: 8px;
+      font-size: 1.09em;
+      margin: 16px 12px 0 12px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 10px rgba(255,137,166,0.13);
+      transition: background 0.2s, transform 0.1s;
+      outline: none;
+    }
+    .button:hover, .option-btn:hover {
+      background: linear-gradient(90deg,#ffde8a,#ff89a6);
+      transform: scale(1.04);
+    }
+    .monologue {
+      font-size: 1.09em;
+      color: #4c4a4e;
+      margin: 30px 0 38px 0;
+      min-height: 108px;
+      line-height: 1.45;
+    }
+    canvas {
+      margin: 0 auto 0 auto;
+      display: block;
+      background: #f5fafd;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(60,60,180,0.05);
+      border: 1.5px solid #e8f7ff;
+    }
+    .enemy-name {
+      font-size: 1.12em;
+      color: #e03c47;
+      font-weight: bold;
+      margin-top: 16px;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 8px #ffe1ea;
+    }
+    .life-bar {
+      height: 18px;
+      width: 90px;
+      background: #fbe9f5;
+      border-radius: 9px;
+      margin: 6px auto 4px auto;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #ff89a6;
+    }
+    .life {
+      background: linear-gradient(90deg,#3c47e0,#ff89a6);
+      height: 100%;
+      border-radius: 9px;
+      position: absolute;
+      left: 0; top: 0;
+      transition: width 0.2s;
+    }
+    .char-label {
+      font-size: 0.98em;
+      color: #333;
+      margin-top: 3px;
+      margin-bottom: 0;
+      letter-spacing: 0.01em;
+    }
+    .platform {
+      background: #b1c4e9;
+      height: 6px;
+      width: 60px;
+      border-radius: 3px;
+      margin: 0 auto;
+      position: relative;
+      top: 2px;
+    }
+    .final-question {
+      font-size: 1.23em;
+      color: #e03c47;
+      font-weight: bold;
+      margin-top: 26px;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 6px #ffe1ea;
+    }
+    .final-answer {
+      font-size: 1.22em;
+      color: #3c47e0;
+      font-weight: bold;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      text-shadow: 0 1px 6px #ffe1ea;
+      letter-spacing: 0.03em;
+    }
+    @media (max-width: 500px) {
+      #game-container {
+        padding: 11px;
+        max-width: 98vw;
+        min-height: 410px;
+      }
+      canvas { width: 98vw !important; max-width: 98vw !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="game-container"></div>
+  <script>
+    // ---- Animated Hearts & Sparkle BG ----
+    const bgCanvas = document.getElementById('bg-canvas');
+    const ctxbg = bgCanvas.getContext('2d');
+    function resizeBG(){
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeBG);
+    resizeBG();
+    // Heart particles
+    let hearts = [];
+    for(let i=0;i<18;i++){
+      hearts.push({
+        x: Math.random()*bgCanvas.width,
+        y: Math.random()*bgCanvas.height,
+        size: 18+Math.random()*20,
+        speed: 0.35+Math.random()*0.5,
+        alpha: 0.35+Math.random()*0.38,
+        phase: Math.random()*Math.PI*2
+      });
+    }
+    // Sparkle particles
+    let sparkles = [];
+    for(let i=0;i<26;i++){
+      sparkles.push({
+        x: Math.random()*bgCanvas.width,
+        y: Math.random()*bgCanvas.height,
+        size: 2+Math.random()*4,
+        speed: 0.22+Math.random()*0.35,
+        alpha: 0.18+Math.random()*0.13
+      });
+    }
+    function drawBG(){
+      ctxbg.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+      // Hearts
+      for(let h of hearts){
+        h.y += h.speed;
+        h.x += Math.sin((Date.now()/900+h.phase))*0.38;
+        if(h.y > bgCanvas.height+32){
+          h.y = -20; h.x = Math.random()*bgCanvas.width;
+        }
+        drawHeart(ctxbg,h.x,h.y,h.size,h.alpha);
+      }
+      // Sparkles
+      for(let s of sparkles){
+        s.y += s.speed;
+        if(s.y > bgCanvas.height+8){
+          s.y = -5; s.x = Math.random()*bgCanvas.width;
+        }
+        ctxbg.save();
+        ctxbg.globalAlpha = s.alpha;
+        ctxbg.beginPath();
+        ctxbg.arc(s.x,s.y,s.size,0,Math.PI*2);
+        ctxbg.fillStyle = "#ffde8a";
+        ctxbg.shadowBlur = 12;
+        ctxbg.shadowColor = "#fff8db";
+        ctxbg.fill();
+        ctxbg.restore();
+      }
+      requestAnimationFrame(drawBG);
+    }
+    function drawHeart(ctx,x,y,size,alpha){
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x, y - size/2, x - size, y - size/2, x - size, y);
+      ctx.bezierCurveTo(x - size, y + size/1.5, x, y + size, x, y + size*1.2);
+      ctx.bezierCurveTo(x, y + size, x + size, y + size/1.5, x + size, y);
+      ctx.bezierCurveTo(x + size, y - size/2, x, y - size/2, x, y);
+      ctx.fillStyle = "#ff89a6";
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = "#ff89a6";
+      ctx.fill();
+      ctx.restore();
+    }
+    drawBG();
+
+    // ---- Audio SFX using Web Audio API ----
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSFX(type) {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      g.connect(audioCtx.destination);
+      o.connect(g);
+      switch(type) {
+        case 'menu': o.type = 'triangle'; o.frequency.value = 420; g.gain.value = 0.10; break;
+        case 'next': o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.09; break;
+        case 'shoot': o.type = 'sawtooth'; o.frequency.value = 660; g.gain.value = 0.13; break;
+        case 'hit': o.type = 'square'; o.frequency.value = 110; g.gain.value = 0.15; break;
+        case 'win': o.type = 'triangle'; o.frequency.value = 1040; g.gain.value = 0.13; break;
+        case 'lose': o.type = 'sawtooth'; o.frequency.value = 90; g.gain.value = 0.18; break;
+        case 'question': o.type = 'triangle'; o.frequency.value = 790; g.gain.value = 0.18; break;
+        default: o.type = 'sine'; o.frequency.value = 330; g.gain.value = 0.08;
+      }
+      o.start();
+      o.stop(audioCtx.currentTime + 0.22);
+      g.gain.linearRampToValueAtTime(0.016, audioCtx.currentTime+0.18);
+    }
+    // --- Game State ---
+    const gameContainer = document.getElementById('game-container');
+    let gameState = {
+      phase: 'startMenu',
+      battleIdx: 0,
+      storyIdx: 0,
+      monologueIdx: 0,
+      monologue: [],
+      enemy: null,
+      playerLife: 3,
+      enemyLife: 3,
+      turn: 'player',
+      platformPos: [0,0],
+      questionAnswered: null
+    };
+    // --- Content ---
+    const monologues = [
+      [
+        "honestly, since yesterday, i've been anxious about us,",
+        "im scared that after giving my everything to you since day one,",
+        "we might not end up together as we envisioned because you told me that your parents might not like it,",
+        "it's hurting me just by thinking about it"
+      ],
+      [
+        "thank you..... another thing is that i cant stop myself from thinking about things that can or will happen to us in the future,",
+        "i dont want everything we had to be squandered, we had great memories together and will create more,",
+        "those memories will HAUNT me til the day i die"
+      ],
+      [
+        "and.. another one down!! i love you, but im having doubts again, every possible outcomes lead me to rumination.",
+        "My dad wants me to marry someone from US because he likes western beauty. I hated that he said that, and of course i dont want anyone else except you,",
+        "i want to marry you baby, but i dont know if you will fight for me...",
+        "another thing is the distance thing again, that time na hindi ko alam na may kaasaran ka pala sa room nyo and you sent him a meme",
+        "and tatlo yung guy na sumusunod sayo whenever we're talking, you even sent a photo of them with the bear filter, i hate to say it but i actually imagine you laughing with those 3 guys kase inaasar ka nila, i hate it i really do.",
+        "and i hate that you probably laughed at their joke one time.",
+        "i dont want any guy near you, im obssesed, i get jealous even when you're only talking to your friends, even with reign when she commented that she's lebron and you replied with the freaky sonic emoji",
+        "FUCK I HATE THAT if you wanna know my redflag, THIS IS IT.",
+        "So, i just became cold and nonchalant, it's better than controlling your life and who you interact with jan sa antipolo."
+      ],
+      [
+        "goodjob baby!! you defeated it all!! im so proud of you, i love you soosososososo much  MWAMWAMMWAWA!!!!!",
+        "i hate that i became nonchalant with you:(( i thought it's a better idea or is it? :( im still not sure but know that i didnt love you any less and there will never be a day when i will."
+      ]
+    ];
+    const battleDefs = [
+      { enemy: "Worry", playerLife: 3, enemyLife: 3, moves: "static" },
+      { enemy: "Overthinking", playerLife: 3, enemyLife: 3, moves: "static" },
+      { enemy: "Doubt", playerLife: 4, enemyLife: 4, moves: "platform" }
+    ];
+    // --- Render Functions ---
+    function renderStartMenu() {
+      playSFX('menu');
+      gameContainer.innerHTML = `
+        <div class="title">💖 help me defeat those bad guys baby, it's hurting me and us :( 💖</div>
+        <button class="button" id="start-btn">Start</button>
+      `;
+      document.getElementById('start-btn').onclick = () => {
+        playSFX('next');
+        gameState.phase = 'monologue';
+        gameState.storyIdx = 0;
+        gameState.monologueIdx = 0;
+        gameState.monologue = monologues[0];
+        renderMonologue();
+      };
+    }
+    function renderMonologue() {
+      let idx = gameState.monologueIdx;
+      let lines = gameState.monologue;
+      gameContainer.innerHTML = `
+        <div class="monologue">${lines[idx]}</div>
+        <button class="button" id="next-monologue">Next</button>
+      `;
+      document.getElementById('next-monologue').onclick = () => {
+        playSFX('next');
+        if (idx < lines.length - 1) {
+          gameState.monologueIdx++;
+          renderMonologue();
+        } else {
+          // If at last monologue set, transition to final question
+          if (gameState.storyIdx === monologues.length - 1) {
+            gameState.phase = 'question';
+            renderFinalQuestion();
+          } else if (gameState.storyIdx < battleDefs.length) {
+            gameState.phase = 'battle';
+            gameState.battleIdx = gameState.storyIdx;
+            gameState.playerLife = battleDefs[gameState.battleIdx].playerLife;
+            gameState.enemyLife = battleDefs[gameState.battleIdx].enemyLife;
+            gameState.turn = 'player';
+            gameState.platformPos = [0,0];
+            renderBattle();
+          } else {
+            // Should not reach here in this flow
+            gameState.phase = 'question';
+            renderFinalQuestion();
+          }
+        }
+      };
+    }
+    function renderBattle() {
+      let def = battleDefs[gameState.battleIdx];
+      let enemyName = def.enemy;
+      let moves = def.moves;
+      let playerLife = gameState.playerLife;
+      let enemyLife = gameState.enemyLife;
+      let turn = gameState.turn;
+      let platform = moves === "platform";
+      let canvasWidth = 340, canvasHeight = 140;
+      gameContainer.innerHTML = `
+        <div class="enemy-name">VS. ${enemyName}</div>
+        <canvas id="battle-canvas" width="${canvasWidth}" height="${canvasHeight}"></canvas>
+        <div style="display:flex; justify-content:space-between;">
+          <div>
+            <div class="char-label">Stickgirl (You)</div>
+            <div class="life-bar"><div class="life" style="width:${Math.max(0,playerLife/def.playerLife*100)}%;"></div></div>
+          </div>
+          <div>
+            <div class="char-label">Stickman (${enemyName})</div>
+            <div class="life-bar"><div class="life" style="width:${Math.max(0,enemyLife/def.enemyLife*100)}%; background:linear-gradient(90deg,#e03c47,#b1c4e9);"></div></div>
+          </div>
+        </div>
+        <div id="battle-msg" style="margin:14px 0 7px 0; color:#3c47e0; font-size:1.07em;"></div>
+        <button class="button" id="shoot-btn">${turn === 'player' ? 'Shoot Arrow' : 'Enemy Turn...'}</button>
+      `;
+      // --- Draw Canvas ---
+      const ctx = document.getElementById('battle-canvas').getContext('2d');
+      let px = platform ? 70 + gameState.platformPos[0] : 70;
+      let ex = platform ? 245 + gameState.platformPos[1] : 245;
+      // Draw floating hearts on battle scene
+      for(let i=0;i<4;i++) drawHeart(ctx, 30+i*75,28,10+Math.random()*7,0.15);
+      // Platform
+      ctx.fillStyle = "#b1c4e9";
+      ctx.fillRect(px-30, 118, 60, 7); // Player platform
+      ctx.fillRect(ex-30, 118, 60, 7); // Enemy platform
+      // Stickgirl
+      drawStickgirl(ctx, px, 105);
+      // Stickman
+      drawStickman(ctx, ex, 105);
+      // ---- Turn logic
+      let battleMsg = document.getElementById('battle-msg');
+      let shootBtn = document.getElementById('shoot-btn');
+      if (turn === 'player') {
+        shootBtn.disabled = false;
+        battleMsg.textContent = "Your turn! Aim and shoot.";
+        shootBtn.onclick = () => {
+          playSFX('shoot');
+          let hitChance = (enemyName === "Doubt") ? 0.60 : 0.70;
+          let hit = Math.random() < hitChance;
+          animateArrow(ctx, px, 105, ex, 105, hit, () => {
+            if (hit) {
+              playSFX('hit');
+              gameState.enemyLife--;
+              battleMsg.textContent = "You hit!";
+            } else {
+              battleMsg.textContent = "Missed!";
+            }
+            if (gameState.enemyLife <= 0) {
+              playSFX('win');
+              setTimeout(() => {
+                battleMsg.textContent = "You defeated " + enemyName + "!";
+                shootBtn.style.display='none';
+                setTimeout(() => {
+                  gameState.phase = 'monologue';
+                  gameState.storyIdx++;
+                  gameState.monologueIdx = 0;
+                  gameState.monologue = monologues[gameState.storyIdx];
+                  renderMonologue();
+                }, 1200);
+              }, 700);
+            } else {
+              gameState.turn = 'enemy';
+              if (platform) {
+                gameState.platformPos = [
+                  Math.round((Math.random()-0.5)*34),
+                  Math.round((Math.random()-0.5)*34)
+                ];
+              }
+              setTimeout(renderBattle, 850);
+            }
+          });
+        };
+      } else {
+        shootBtn.disabled = true;
+        battleMsg.textContent = `${enemyName}'s turn...`;
+        setTimeout(() => {
+          playSFX('shoot');
+          let hitChance = (enemyName === "Doubt") ? 0.70 : 0.60;
+          let hit = Math.random() < hitChance;
+          animateArrow(ctx, ex, 105, px, 105, hit, () => {
+            if (hit) {
+              playSFX('hit');
+              gameState.playerLife--;
+              battleMsg.textContent = `${enemyName} hits you!`;
+            } else {
+              battleMsg.textContent = `${enemyName} missed!`;
+            }
+            if (gameState.playerLife <= 0) {
+              playSFX('lose');
+              shootBtn.style.display='none';
+              setTimeout(() => {
+                battleMsg.textContent = "You lost... Try again!";
+                setTimeout(() => {
+                  gameState.playerLife = def.playerLife;
+                  gameState.enemyLife = def.enemyLife;
+                  gameState.turn = 'player';
+                  gameState.platformPos = [0,0];
+                  renderBattle();
+                }, 1200);
+              }, 750);
+            } else {
+              gameState.turn = 'player';
+              if (platform) {
+                gameState.platformPos = [
+                  Math.round((Math.random()-0.5)*34),
+                  Math.round((Math.random()-0.5)*34)
+                ];
+              }
+              setTimeout(renderBattle, 850);
+            }
+          });
+        }, 850);
+      }
+    }
+    function drawStickgirl(ctx, x, y) {
+      ctx.save();
+      // Body
+      ctx.strokeStyle = "#ff89a6";
+      ctx.lineWidth = 2.7;
+      ctx.beginPath(); ctx.arc(x, y-22, 12, 0, Math.PI*2); ctx.stroke(); // head
+      // Hair bun
+      ctx.beginPath(); ctx.arc(x-10, y-32, 6, 0, Math.PI*2); ctx.strokeStyle="#ffde8a"; ctx.lineWidth=2.2; ctx.stroke();
+      // Body
+      ctx.strokeStyle = "#ff89a6"; ctx.lineWidth = 2.7;
+      ctx.beginPath(); ctx.moveTo(x, y-10); ctx.lineTo(x, y+20); ctx.stroke(); // body
+      ctx.beginPath(); ctx.moveTo(x, y+20); ctx.lineTo(x-12, y+38); ctx.stroke(); // left leg
+      ctx.beginPath(); ctx.moveTo(x, y+20); ctx.lineTo(x+12, y+38); ctx.stroke(); // right leg
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x-18, y+6); ctx.stroke(); // left arm
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+18, y-6); ctx.stroke(); // right arm
+      // Bow (left hand)
+      ctx.strokeStyle="#3c47e0";
+      ctx.lineWidth=2.3;
+      ctx.beginPath(); ctx.arc(x-14, y+2, 9, Math.PI*0.6, Math.PI*2.4); ctx.stroke();
+      ctx.restore();
+    }
+    function drawStickman(ctx, x, y) {
+      ctx.save();
+      ctx.strokeStyle = "#3c47e0";
+      ctx.lineWidth = 2.7;
+      ctx.beginPath(); ctx.arc(x, y-22, 12, 0, Math.PI*2); ctx.stroke(); // head
+      // Spiky hair
+      for(let i=0;i<5;i++) {
+        ctx.beginPath();
+        ctx.moveTo(x-8+i*4,y-33);
+        ctx.lineTo(x-8+i*4,y-39);
+        ctx.strokeStyle="#b1c4e9"; ctx.lineWidth=1.6; ctx.stroke();
+      }
+      ctx.strokeStyle = "#3c47e0"; ctx.lineWidth = 2.7;
+      ctx.beginPath(); ctx.moveTo(x, y-10); ctx.lineTo(x, y+20); ctx.stroke(); // body
+      ctx.beginPath(); ctx.moveTo(x, y+20); ctx.lineTo(x-12, y+38); ctx.stroke(); // left leg
+      ctx.beginPath(); ctx.moveTo(x, y+20); ctx.lineTo(x+12, y+38); ctx.stroke(); // right leg
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x-18, y+6); ctx.stroke(); // left arm
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+18, y-6); ctx.stroke(); // right arm
+      // Bow (right hand)
+      ctx.strokeStyle="#e03c47";
+      ctx.lineWidth=2.3;
+      ctx.beginPath(); ctx.arc(x+14, y+2, 9, Math.PI*2.4, Math.PI*0.6, true); ctx.stroke();
+      ctx.restore();
+    }
+    function animateArrow(ctx, x1, y1, x2, y2, hit, cb) {
+      let frames = 16, frame = 0;
+      let dx = (x2-x1)/frames, dy = (y2-y1)/frames;
+      let arcHeight = 24;
+      function drawFrame() {
+        ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+        // Redraw floating hearts
+        for(let i=0;i<4;i++) drawHeart(ctx, 30+i*75,28,10+Math.random()*7,0.15);
+        let px = battleDefs[gameState.battleIdx].moves==="platform"?70+gameState.platformPos[0]:70;
+        let ex = battleDefs[gameState.battleIdx].moves==="platform"?245+gameState.platformPos[1]:245;
+        ctx.fillStyle = "#b1c4e9";
+        ctx.fillRect(px-30, 118, 60, 7); // Player platform
+        ctx.fillRect(ex-30, 118, 60, 7); // Enemy platform
+        drawStickgirl(ctx, px, 105);
+        drawStickman(ctx, ex, 105);
+        // Arrow position
+        let tx = x1 + dx*frame;
+        let ty = y1 + dy*frame - arcHeight*Math.sin(Math.PI*frame/frames);
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(Math.atan2(y2-y1, x2-x1));
+        ctx.strokeStyle = hit ? "#e03c47" : "#999";
+        ctx.lineWidth = 2.1;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(20,0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(14,-5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(14,5); ctx.stroke();
+        ctx.restore();
+        frame++;
+        if (frame <= frames) {
+          requestAnimationFrame(drawFrame);
+        } else {
+          cb();
+        }
+      }
+      drawFrame();
+    }
+    function renderFinalQuestion() {
+      playSFX('question');
+      gameContainer.innerHTML = `
+        <div class="final-question">
+          are you willing to spend the rest of your life with bryce and marry him and have kids with him?
+        </div>
+        <button class="option-btn" id="yes-btn">Yes</button>
+        <button class="option-btn" id="no-btn">No</button>
+      `;
+      document.getElementById('yes-btn').onclick = () => {
+        playSFX('win');
+        gameContainer.innerHTML = `<div class="final-answer">YAYAYAYAYY I LOVE YOUUU 💖</div>`;
+      };
+      document.getElementById('no-btn').onclick = () => {
+        playSFX('lose');
+        gameContainer.innerHTML = `<div class="final-answer" style="color:#e03c47;">end things with him rn.</div>`;
+      };
+    }
+    // --- Start Game ---
+    renderStartMenu();
+  </script>
+</body>
+</html>
